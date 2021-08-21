@@ -1,9 +1,9 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
-void main() => runApp(MyApp());
+main() => runApp(MyApp());
 
 class MyApp extends StatefulWidget {
   @override
@@ -11,46 +11,59 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
+  Marker _user;
+  Completer<GoogleMapController> _controllerGoogleMap = Completer();
+  GoogleMapController newGoogleMapController;
+  Position userCurrentPosition;
+  List<LatLng> latlngList = List();
+  var geoLocator = Geolocator();
+
+  void locatePosition() async {
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+    userCurrentPosition = position;
+
+    LatLng latLngPosition = LatLng(position.latitude, position.longitude);
+    CameraPosition cameraPosition =
+        new CameraPosition(target: latLngPosition, zoom: 14);
+    newGoogleMapController
+        .animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
+    setState(() {
+      _user = Marker(
+        markerId: MarkerId("origin"),
+        position: latLngPosition,
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueViolet),
+      );
+      latlngList.add(_user.position);
+    });
+  }
+
+  static final CameraPosition _kGooglePlex = CameraPosition(
+      target: LatLng(28.121650833842286, 30.930623376681833), zoom: 14);
+
+  //collection
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-     // title: 'Flutter Google Maps Demo',
-      home: MapSample(),
-    );
-  }
-}
-
-class MapSample extends StatefulWidget {
-  @override
-  State<MapSample> createState() => MapSampleState();
-}
-
-class MapSampleState extends State<MapSample> {
-
-  Completer<GoogleMapController> _controller = Completer();
-Set<Marker> myMarkers = {
-  Marker(markerId: MarkerId("1"),position:LatLng(30.013056, 31.208853) ),
-};
-  static final CameraPosition _kGooglePlex = CameraPosition(
-    target: LatLng(30.013056, 31.208853),
-    zoom: 14.4746,
-  );
-
-
-  @override
-  Widget build(BuildContext context) {
-    return new Scaffold(
-      body: GoogleMap(
-        mapType: MapType.normal,
-        initialCameraPosition: _kGooglePlex,
-        onMapCreated: (GoogleMapController controller) {
-          _controller.complete(controller);
-        },
-        markers: myMarkers,
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        body: GoogleMap(
+          mapType: MapType.normal,
+          myLocationButtonEnabled: true,
+          zoomControlsEnabled: true,
+          zoomGesturesEnabled: true,
+          initialCameraPosition: _kGooglePlex,
+          onMapCreated: (GoogleMapController controller) {
+            _controllerGoogleMap.complete(controller);
+            newGoogleMapController = controller;
+            locatePosition();
+          },
+          markers: {
+            if (_user != null) _user,
+          },
+        ),
       ),
     );
-
   }
-
-
 }
